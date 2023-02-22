@@ -1,0 +1,126 @@
+import face_recognition
+import numpy as np
+import cv2
+import pickle
+import tkinter as tk
+from tkinter import Button
+from tkinter import filedialog
+
+#taille de la fenetre tkinter
+window_width = 500
+window_height = 300
+
+# Créez la fenêtre
+window = tk.Tk()
+
+
+# Récupérer les dimensions de l'écran
+screen_width = window.winfo_screenwidth()
+screen_height = window.winfo_screenheight()
+
+# Calculer les coordonnées x et y pour placer la fenêtre au milieu de l'écran
+x = (screen_width // 2) - (window_width // 2)
+y = (screen_height // 2) - (window_height // 2)
+
+# Appliquer les coordonnées x et y à la fenêtre
+window.geometry(f'{window_width}x{window_height}+{x}+{y}')
+
+
+def load_image():
+  global unknown_image
+  # Ouvrir une boîte de dialogue de sélection de fichier
+  file_path = filedialog.askopenfilename()
+
+  # Charger l'image à partir du chemin de fichier sélectionné
+  unknown_image = face_recognition.load_image_file(file_path)
+
+def recognize_faces():
+    
+# Charger les images de référence de chaque personne que vous souhaitez reconnaître
+    image_of_person_1 = face_recognition.load_image_file("mike.jpg")
+    image_of_person_2 = face_recognition.load_image_file("dustin.jpg")
+    image_of_person_3 = face_recognition.load_image_file("max.jpg")
+    image_of_person_4 = face_recognition.load_image_file("will.jpg")
+    image_of_person_5 = face_recognition.load_image_file("elf.jpg")
+
+    # Obtenir les encodages de visage de chaque image de référence
+    person_1_face_encoding = face_recognition.face_encodings(image_of_person_1)[0]
+    person_2_face_encoding = face_recognition.face_encodings(image_of_person_2)[0]
+    person_3_face_encoding = face_recognition.face_encodings(image_of_person_3)[0]
+    person_4_face_encoding = face_recognition.face_encodings(image_of_person_4)[0]
+    person_5_face_encoding = face_recognition.face_encodings(image_of_person_5)[0]
+
+
+    # Stockez les encodages de visage dans un dictionnaire avec leur nom associé
+    # Stockez les encodages de visage dans un dictionnaire avec leur nom associé
+    known_faces = {
+        pickle.dumps(person_1_face_encoding): "Mike",
+        pickle.dumps(person_2_face_encoding): "Dustin",
+        pickle.dumps(person_3_face_encoding): "Max",
+        pickle.dumps(person_4_face_encoding): "Will",
+        pickle.dumps(person_5_face_encoding): "Elf"
+        
+    }
+    
+
+    # Charger l'image où vous souhaitez détecter des visages
+    #unknown_image = face_recognition.load_image_file("stranger.jpg")
+
+    # Convertir l'image en RVB (utilisé par cv2)
+    unknown_image_BGR = cv2.cvtColor(unknown_image, cv2.COLOR_RGB2BGR)
+
+    # Obtenir les coordonnées (x, y) des coins supérieur et inférieur de chaque visage et leur encoding de visage
+    face_locations = face_recognition.face_locations(unknown_image)
+    face_encodings = face_recognition.face_encodings(unknown_image, face_locations)
+
+    # Pour chaque visage détecté,
+    for (top, right, bottom, left), face_encoding in zip(face_locations, face_encodings):
+        
+        # Initialisez un dictionnaire pour stocker les résultats de chaque comparaison
+        results = {}
+
+        # Pour chaque encoding de visage connu, calculez la distance euclidienne entre l'encoding de visage inconnu et l'encoding de visage connu
+        for known_face_encoding, name in known_faces.items():
+            d = face_recognition.face_distance([pickle.loads(known_face_encoding)], face_encoding)
+            results[name] = d
+
+        # Triez les résultats par distance euclidienne la plus faible
+        results = sorted(results.items(), key=lambda x: x[1])
+
+        # Récupérez le nom associé au visage connu le plus similaire
+        name = results[0][0]
+
+            # Dessinez un rectangle autour du visage
+        cv2.rectangle(unknown_image_BGR, (left, top), (right, bottom), (176, 224, 230), 2)
+
+        # Ecrivez le nom du visage reconnu sur le rectangle
+        font = cv2.FONT_HERSHEY_DUPLEX
+        cv2.putText(unknown_image_BGR, name, (left + 6, bottom - 6), font, 1.0, (255, 255, 255), 1)
+
+    # Affichez l'image avec les rectangles et les noms
+    cv2.namedWindow("Recognized faces", cv2.WND_PROP_FULLSCREEN)
+    cv2.moveWindow("Recognized faces", 0, 0)
+    cv2.setWindowProperty("Recognized faces", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
+
+    window_height, window_width = 720, 1280
+    cv2.resizeWindow("Recognized faces", window_width, window_height)
+    cv2.imshow("Recognized faces", unknown_image_BGR)
+    cv2.waitKey(0)
+
+    # Enregistrez l'image avec les rectangles et les noms
+    cv2.imwrite("recognized_faces.jpg", unknown_image_BGR)
+
+button = Button(window, text="Lancer la reconnaissance faciale", command=recognize_faces)
+button.pack(padx=100, pady=100)
+# Créer le bouton
+load_button = tk.Button(text="Charger une image", command=load_image)
+
+
+# Afficher le bouton
+load_button.pack()
+
+
+# Affichez la fenêtre principale
+window.mainloop()
+
+
